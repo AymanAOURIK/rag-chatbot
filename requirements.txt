@@ -7,3 +7,5 @@ rank_bm25==0.2.1
 nltk==3.8.1
 gdown==4.6.4
 chromadb==0.3.21
+werkzeug==2.2.2
+accelerate
