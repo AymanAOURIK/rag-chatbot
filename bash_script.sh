@@ -27,11 +27,20 @@ echo "Upgrading pip and installing dependencies..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
+apt-get update && apt-get install vim
+pip install pypdf
+pip install sentence_transformers
+pip install huggingface_hub==0.13.3
+pip install --upgrade sentence-transformers
+pip install --upgrade torch torchvision torchaudio
+
+
 python download_pdfs.py
 # Step 5: Process the PDFs.
 echo "Processing PDFs to extract text and create chunks..."
 python pdf_process.py
 
+pip install -U bitsandbytes
 # Step 6: Launch the chatbot Flask API on port 8888.
 echo "Starting the chatbot application on port 8888..."
 python app.py
