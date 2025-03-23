@@ -1,10 +1,10 @@
-# app.py
 from flask import Flask, request, jsonify
 import json
 from model import generate_response
 from rank_bm25 import BM25Okapi
 import nltk
 from nltk.tokenize import word_tokenize
+import re
 
 # Download NLTK data if needed
 nltk.download('punkt')
@@ -20,36 +20,75 @@ documents = [chunk["page_content"] for chunk in chunks]
 tokenized_docs = [word_tokenize(doc.lower()) for doc in documents]
 bm25 = BM25Okapi(tokenized_docs)
 
-# GET endpoint to check API status or provide instructions for /ask
+def refine_response(raw_response: str, max_new_tokens=200) -> str:
+    """
+    Cleans the raw response by removing internal markers and then instructs the model
+    (as a highly sophisticated AI expert in international development) to generate a final answer.
+    Finally, it extracts only the final answer (the text following the "Final Answer:" marker)
+    to ensure no internal instructions appear in the output.
+    """
+    # Remove lines starting with "[Contextualized]:" and normalize whitespace.
+    cleaned = re.sub(r'\[Contextualized\]:.*?\n', '', raw_response)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+
+    # Define the expert instruction prompt.
+    instruction = (
+        "You are a highly sophisticated AI system with deep expertise in international development, "
+        "global policies, and humanitarian affairs. Based on the analysis provided below, produce a final answer "
+        "that is concise, clear, and free of any internal processing details. "
+        "Only output the final answer after the marker 'Final Answer:' and nothing else."
+    )
+    
+    # Combine the instruction and the cleaned analysis to form a new prompt.
+    new_prompt = f"{instruction}\n\nAnalysis:\n{cleaned}\n\nFinal Answer:"
+    
+    # Generate the refined answer.
+    final_response_raw = generate_response(new_prompt, max_new_tokens=max_new_tokens)
+    
+    # Extract only the part after "Final Answer:" marker.
+    if "Final Answer:" in final_response_raw:
+        final_answer = final_response_raw.split("Final Answer:", 1)[1].strip()
+    else:
+        final_answer = final_response_raw.strip()
+    return final_answer
+
 @app.route("/ask", methods=["GET", "POST"])
 def ask():
     if request.method == "GET":
         return jsonify({
-            "message": "Welcome to the RAG Chatbot API. "
-                       "Please use the POST method to ask a question with JSON payload: {'question': 'your question here'}"
+            "message": (
+                "Welcome to the RAG Chatbot API. Please use POST to ask a question with JSON payload: "
+                "{'question': 'your question here'}"
+            )
         })
-    
-    # Process POST request
+
     data = request.get_json()
     question = data.get("question", "")
     if not question:
         return jsonify({"error": "Question is required"}), 400
 
+    # Retrieve top relevant chunks via BM25.
     tokenized_query = word_tokenize(question.lower())
     scores = bm25.get_scores(tokenized_query)
     top_n = 3
     top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_n]
     context = "\n\n".join([documents[i] for i in top_indices])
-    
-    prompt = f"Context: {context}\n\nQuestion: {question}\nAnswer:"
-    response = generate_response(prompt)
-    return jsonify({"response": response})
 
-# GET endpoint to check API status
+    # Create the prompt for generation.
+    prompt = f"Context: {context}\n\nQuestion: {question}\nAnswer:"
+    
+    # Generate the raw response.
+    raw_response = generate_response(prompt)
+    
+    # Refine the raw response to produce a clean final answer.
+    refined_response = refine_response(raw_response)
+    
+    return jsonify({"response": refined_response})
+
 @app.route("/", methods=["GET"])
 def index():
     return jsonify({"message": "RAG Chatbot API is running."})
 
 if __name__ == "__main__":
-    # Run the app on port 8888
-    app.run(host="0.0.0.0", port=8080, debug=True)
+    # Run the app (adjust port as needed).
+    app.run(host="0.0.0.0", port=8888, debug=True)
