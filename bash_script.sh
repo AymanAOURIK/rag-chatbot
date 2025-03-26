@@ -45,7 +45,7 @@ pip install -U bitsandbytes
 echo "Starting the chatbot application on port 8888..."
 python app.py
 pip install gunicorn
-gunicorn --daemon --bind 0.0.0.0:8888 app:app
+gunicorn --daemon --bind 0.0.0.0:8080 app:app
 curl ifconfig.me
 apt update && apt install -y net-tools lsof
 
