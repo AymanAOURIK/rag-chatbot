@@ -22,23 +22,23 @@ bm25 = BM25Okapi(tokenized_docs)
 
 def refine_response(raw_response: str, max_new_tokens=200) -> str:
     """
-    Cleans the raw response by removing internal markers and then instructs the model
-    (as a highly sophisticated AI expert in international development) to generate a final answer.
-    Finally, it extracts only the final answer (the text following the "Final Answer:" marker)
+    Cleans the raw response by removing internal markers and instructs the model,
+    acting as a highly sophisticated AI expert in international development, to produce a final answer.
+    The function then extracts only the final answer (the text following the "Final Answer:" marker)
     to ensure no internal instructions appear in the output.
     """
     # Remove lines starting with "[Contextualized]:" and normalize whitespace.
     cleaned = re.sub(r'\[Contextualized\]:.*?\n', '', raw_response)
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
 
-    # Define the expert instruction prompt.
+    # Define an enhanced expert instruction prompt.
     instruction = (
         "You are a highly sophisticated AI system with deep expertise in international development, "
-        "global policies, and humanitarian affairs. Based on the analysis provided below, produce a final answer "
-        "that is concise, clear, and free of any internal processing details. "
-        "Only output the final answer after the marker 'Final Answer:' and nothing else."
+        "global policies, and humanitarian affairs. Disregard all internal analysis and chain-of-thought details. "
+        "Based solely on the analysis provided below, provide a final answer that is direct, concise, and free of any internal markers. "
+        "Do not repeat or include any internal processing details—only output the final answer after the marker 'Final Answer:' and nothing else."
     )
-    
+
     # Combine the instruction and the cleaned analysis to form a new prompt.
     new_prompt = f"{instruction}\n\nAnalysis:\n{cleaned}\n\nFinal Answer:"
     
@@ -50,6 +50,9 @@ def refine_response(raw_response: str, max_new_tokens=200) -> str:
         final_answer = final_response_raw.split("Final Answer:", 1)[1].strip()
     else:
         final_answer = final_response_raw.strip()
+    
+    # Optional: Further remove any stray square bracket markers.
+    final_answer = re.sub(r'\[.*?\]', '', final_answer).strip()
     return final_answer
 
 @app.route("/ask", methods=["GET", "POST"])
@@ -90,5 +93,5 @@ def index():
     return jsonify({"message": "RAG Chatbot API is running."})
 
 if __name__ == "__main__":
-    # Run the app (adjust port as needed).
-    app.run(host="0.0.0.0", port=8888, debug=True)
+    # Run the app on the desired port.
+    app.run(host="0.0.0.0", port=8080, debug=True)
