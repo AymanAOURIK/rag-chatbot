@@ -20,39 +20,45 @@ documents = [chunk["page_content"] for chunk in chunks]
 tokenized_docs = [word_tokenize(doc.lower()) for doc in documents]
 bm25 = BM25Okapi(tokenized_docs)
 
-def refine_response(raw_response: str, max_new_tokens=200) -> str:
+def refine_response(raw_response: str, max_new_tokens=300) -> str:
     """
-    Cleans the raw response by removing internal markers and instructs the model,
-    acting as a highly sophisticated AI expert in international development, to produce a final answer.
-    The function then extracts only the final answer (the text following the "Final Answer:" marker)
-    to ensure no internal instructions appear in the output.
+    Refines the raw response by:
+      1. Removing internal markers.
+      2. Instructing the model to generate a final answer in a structured format.
+      3. Extracting only the final answer.
+      
+    The final answer will be formatted with clear headings and bullet points to cover key domains.
     """
     # Remove lines starting with "[Contextualized]:" and normalize whitespace.
     cleaned = re.sub(r'\[Contextualized\]:.*?\n', '', raw_response)
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
 
-    # Define an enhanced expert instruction prompt.
+    # Enhanced instruction prompt to generate a structured, domain-specific answer.
     instruction = (
-        "You are a highly sophisticated AI system with deep expertise in international development, "
-        "global policies, and humanitarian affairs. Disregard all internal analysis and chain-of-thought details. "
-        "Based solely on the analysis provided below, provide a final answer that is direct, concise, and free of any internal markers. "
-        "Do not repeat or include any internal processing details—only output the final answer after the marker 'Final Answer:' and nothing else."
+        "You are a highly sophisticated AI expert in international development, global policies, and humanitarian affairs. "
+        "Based solely on the analysis provided below, produce a final answer that is direct, comprehensive, and formatted in a structured way. "
+        "Your answer should include separate sections with headings for different domains such as 'Health Sector', 'Education Sector', "
+        "'Poverty Alleviation & Social Protection', etc. Use bullet points under each heading to list key interventions. "
+        "Do not include any internal processing details or chain-of-thought notes. "
+        "Output only the final answer, starting with 'Final Answer:' followed by the structured answer."
     )
 
-    # Combine the instruction and the cleaned analysis to form a new prompt.
+    # Construct the prompt for refinement.
     new_prompt = f"{instruction}\n\nAnalysis:\n{cleaned}\n\nFinal Answer:"
     
     # Generate the refined answer.
     final_response_raw = generate_response(new_prompt, max_new_tokens=max_new_tokens)
     
-    # Extract only the part after "Final Answer:" marker.
+    # Extract only the part after the last occurrence of "Final Answer:".
     if "Final Answer:" in final_response_raw:
-        final_answer = final_response_raw.split("Final Answer:", 1)[1].strip()
+        parts = final_response_raw.split("Final Answer:")
+        final_answer = parts[-1].strip()
     else:
         final_answer = final_response_raw.strip()
     
-    # Optional: Further remove any stray square bracket markers.
+    # Optional: Further clean stray markers.
     final_answer = re.sub(r'\[.*?\]', '', final_answer).strip()
+    
     return final_answer
 
 @app.route("/ask", methods=["GET", "POST"])
