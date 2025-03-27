@@ -51,4 +51,4 @@ apt update && apt install -y net-tools lsof
 
 
 #Ask a question from the local host using this : 
-curl -X POST "http://localhost:8080/ask" -H "Content-Type: application/json" -d '{"question": "What are the key interventions done on Pakistan ?"}'
+curl -X POST "http://localhost:8080/ask" -H "Content-Type: application/json" -d '{"question": "What are the key interventions done on Pakistan and its corresponding outcomes ?"}'
