@@ -9,3 +9,10 @@ gdown==4.6.4
 chromadb==0.3.21
 werkzeug==2.2.2
 accelerate
+pypdf
+sentence_transformers
+huggingface_hub==0.13.3
+--upgrade sentence-transformers
+--upgrade torch torchvision torchaudio
+-U bitsandbytes
+gunicorn
