@@ -1,6 +1,7 @@
 import logging
 from flask import Flask, request, jsonify
 import json
+import os
 from model import generate_response
 from rank_bm25 import BM25Okapi
 import nltk
@@ -14,8 +15,12 @@ app = Flask(__name__)
 # Download NLTK data if needed
 nltk.download('punkt')
 
-# Load preprocessed chunks from file
-with open("chunks.json", "r", encoding="utf-8") as f:
+# Determine the directory where app.py is located
+here = os.path.dirname(os.path.abspath(__file__))
+app.logger.debug(f"app.py directory: {here}")
+
+# Load preprocessed chunks from file using an absolute path
+with open(os.path.join(here, "chunks.json"), "r", encoding="utf-8") as f:
     chunks = json.load(f)
 
 # Prepare the BM25 retriever by tokenizing each chunk's text.
@@ -43,7 +48,6 @@ def refine_response(raw_response: str, max_new_tokens=300) -> str:
     )
 
     new_prompt = f"{instruction}\n\nAnalysis:\n{cleaned}\n\nFinal Answer:"
-
     final_response_raw = generate_response(new_prompt, max_new_tokens=max_new_tokens)
 
     if "Final Answer:" in final_response_raw:
@@ -53,7 +57,6 @@ def refine_response(raw_response: str, max_new_tokens=300) -> str:
         final_answer = final_response_raw.strip()
 
     final_answer = re.sub(r'\[.*?\]', '', final_answer).strip()
-
     return final_answer
 
 @app.route("/ask", methods=["GET", "POST"])
@@ -72,17 +75,17 @@ def ask():
             app.logger.error("No question provided in the request")
             return jsonify({"error": "Question is required"}), 400
 
-        # Log tokenization of query
+        # Tokenize the query
         tokenized_query = word_tokenize(question.lower())
         app.logger.debug(f"Tokenized query: {tokenized_query}")
 
+        # Get BM25 scores for each document
         scores = bm25.get_scores(tokenized_query)
         app.logger.debug(f"BM25 scores: {scores}")
 
         top_n = 3
         top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_n]
         context = "\n\n".join([documents[i] for i in top_indices])
-
         app.logger.debug(f"Context for response: {context}")
 
         prompt = f"Context: {context}\n\nQuestion: {question}\nAnswer:"
@@ -92,7 +95,6 @@ def ask():
         app.logger.debug(f"Raw response: {raw_response}")
 
         refined_response = refine_response(raw_response)
-
         return jsonify({"response": refined_response})
 
     except Exception as e:
