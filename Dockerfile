@@ -10,6 +10,6 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY . .
 
 # Expose the port your app runs on (8888)
-EXPOSE 8888
+EXPOSE 8080
 
 CMD ["python", "app.py"]
