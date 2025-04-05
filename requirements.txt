@@ -1,18 +1,16 @@
 Flask==2.2.2
-transformers==4.30.0
-torch==2.0.1
+transformers>=4.39.3
+torch==2.1.2
 langchain==0.0.142
-PyPDF2==3.0.1
+pypdf==3.11.1
 rank_bm25==0.2.1
 nltk==3.8.1
 gdown==4.6.4
 chromadb==0.3.21
 werkzeug==2.2.2
-accelerate
-pypdf
-sentence_transformers
-huggingface_hub==0.13.3
---upgrade sentence-transformers
---upgrade torch torchvision torchaudio
--U bitsandbytes
-gunicorn
+accelerate==0.27.2
+sentence-transformers==2.2.2
+huggingface_hub>=0.14.1,<1.0
+gunicorn==20.1.0
+bitsandbytes==0.41.1
+numpy>=1.21.0
