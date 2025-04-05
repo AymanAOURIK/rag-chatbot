@@ -1,5 +1,5 @@
 Flask==2.2.2
-transformers>=4.39.3
+transformers==4.39.3
 torch==2.1.2
 langchain==0.0.142
 pypdf==3.11.1
@@ -9,8 +9,8 @@ gdown==4.6.4
 chromadb==0.3.21
 werkzeug==2.2.2
 accelerate==0.27.2
-sentence-transformers==2.2.2
-huggingface_hub>=0.14.1,<1.0
+sentence-transformers==2.3.1
+huggingface_hub==0.26.1
 gunicorn==20.1.0
-bitsandbytes==0.41.1
+bitsandbytes==0.45.4
 numpy>=1.21.0
