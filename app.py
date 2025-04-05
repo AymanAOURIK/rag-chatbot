@@ -7,6 +7,8 @@ from rank_bm25 import BM25Okapi
 import nltk
 from nltk.tokenize import word_tokenize
 import re
+import numpy as np
+from sentence_transformers import SentenceTransformer, util
 
 # Setup logging
 logging.basicConfig(level=logging.DEBUG)
@@ -27,6 +29,10 @@ with open(os.path.join(here, "chunks.json"), "r", encoding="utf-8") as f:
 documents = [chunk["page_content"] for chunk in chunks]
 tokenized_docs = [word_tokenize(doc.lower()) for doc in documents]
 bm25 = BM25Okapi(tokenized_docs)
+
+# Initialize the dense retrieval model and compute document embeddings.
+dense_model = SentenceTransformer('all-MiniLM-L6-v2')
+doc_embeddings = dense_model.encode(documents, convert_to_tensor=True)
 
 def refine_response(raw_response: str, max_new_tokens=300) -> str:
     """
@@ -95,11 +101,25 @@ def ask():
         app.logger.debug(f"Tokenized query: {tokenized_query}")
 
         # Get BM25 scores for each document
-        scores = bm25.get_scores(tokenized_query)
-        app.logger.debug(f"BM25 scores: {scores}")
+        bm25_scores = bm25.get_scores(tokenized_query)
+        app.logger.debug(f"BM25 scores: {bm25_scores}")
+
+        # Compute dense similarity scores using the SentenceTransformer model.
+        query_embedding = dense_model.encode(question, convert_to_tensor=True)
+        dense_scores = util.cos_sim(query_embedding, doc_embeddings)[0].cpu().numpy()
+        app.logger.debug(f"Dense scores: {dense_scores}")
+
+        # Normalize both BM25 and dense scores.
+        bm25_scores = np.array(bm25_scores)
+        bm25_norm = (bm25_scores - bm25_scores.min()) / (bm25_scores.max() - bm25_scores.min() + 1e-10)
+        dense_norm = (dense_scores - dense_scores.min()) / (dense_scores.max() - dense_scores.min() + 1e-10)
+        
+        # Compute a weighted hybrid score (here both scores are weighted equally).
+        hybrid_scores = 0.5 * bm25_norm + 0.5 * dense_norm
+        app.logger.debug(f"Hybrid scores: {hybrid_scores}")
 
         top_n = 3
-        top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_n]
+        top_indices = sorted(range(len(hybrid_scores)), key=lambda i: hybrid_scores[i], reverse=True)[:top_n]
         context = "\n\n".join([documents[i] for i in top_indices])
         app.logger.debug(f"Context for response: {context}")
 
