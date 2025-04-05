@@ -24,13 +24,36 @@ def count_tokens(text: str) -> int:
     """
     return len(text.split())
 
+@lru_cache(maxsize=1)
+def get_base_llm_pipeline():
+    """
+    Initializes and caches the base LLM pipeline for generating augmented context.
+    Using google/flan-t5-small which is instruction-tuned and suitable for this task.
+    """
+    from transformers import pipeline
+    llm_pipeline = pipeline("text2text-generation", model="google/flan-t5-small")
+    return llm_pipeline
+
 def generate_contextualized_chunk(whole_document: str, chunk_text: str) -> str:
     """
-    Placeholder for contextual augmentation.
-    In production, replace this with a call to your preferred LLM for generating contextual text.
+    Generates augmented contextual information for a given chunk using a base LLM.
+    The function constructs a prompt that includes the whole document context and the excerpt,
+    then uses the LLM to produce additional clarifications and context.
     """
-    context = f"[Contextualized]: {chunk_text[:50]}..."
-    return f"{context}\n{chunk_text}"
+    # Retrieve the base LLM pipeline.
+    llm = get_base_llm_pipeline()
+    # Construct a prompt that provides both the document context and the excerpt.
+    prompt = (
+        f"Document context: {whole_document}\n\n"
+        f"Excerpt: {chunk_text}\n\n"
+        "Provide additional context, background, and clarifications that enrich the content of the excerpt."
+    )
+    try:
+        generated = llm(prompt, max_length=256, do_sample=False)[0]['generated_text']
+    except Exception as e:
+        logging.error(f"LLM generation error: {e}")
+        generated = "[Context generation failed]"
+    return f"{generated}\n\n{chunk_text}"
 
 def load_and_process_pdfs(
     pdf_dir="pdfs",
